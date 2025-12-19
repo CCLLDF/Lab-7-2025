@@ -179,7 +179,7 @@ public class TabulatedFunctions {
     /**
      * Считывает табулированную функцию из байтового потока.
      * Формат: количество точек (int), затем для каждой точки: x (double), y (double).
-     * 
+     *
      * @param in входной байтовый поток
      * @return восстановленная табулированная функция
      * @throws IOException если возникает ошибка ввода-вывода
@@ -204,6 +204,38 @@ public class TabulatedFunctions {
         }
 
         return createTabulatedFunction(points);
+    }
+
+    /**
+     * Считывает табулированную функцию из байтового потока с использованием рефлексии.
+     * Формат: количество точек (int), затем для каждой точки: x (double), y (double).
+     *
+     * @param clazz класс табулированной функции
+     * @param in входной байтовый поток
+     * @return восстановленная табулированная функция
+     * @throws IOException если возникает ошибка ввода-вывода
+     */
+    public static <T extends TabulatedFunction> TabulatedFunction inputTabulatedFunction(
+            Class<T> clazz, InputStream in) throws IOException {
+        if (in == null) {
+            throw new IllegalArgumentException("InputStream must not be null");
+        }
+
+        DataInputStream dataIn = new DataInputStream(in);
+        int pointsCount = dataIn.readInt();
+
+        if (pointsCount < 2) {
+            throw new IOException("Invalid points count: " + pointsCount);
+        }
+
+        FunctionPoint[] points = new FunctionPoint[pointsCount];
+        for (int i = 0; i < pointsCount; i++) {
+            double x = dataIn.readDouble();
+            double y = dataIn.readDouble();
+            points[i] = new FunctionPoint(x, y);
+        }
+
+        return createTabulatedFunction(clazz, points);
     }
 
     /**
@@ -302,7 +334,7 @@ public class TabulatedFunctions {
     /**
      * Считывает табулированную функцию из символьного потока.
      * Формат: количество точек, затем для каждой точки: x y (значения разделены пробелами).
-     * 
+     *
      * @param in входной символьный поток
      * @return восстановленная табулированная функция
      * @throws IOException если возникает ошибка ввода-вывода
@@ -343,6 +375,54 @@ public class TabulatedFunctions {
         }
 
         return createTabulatedFunction(points);
+    }
+
+    /**
+     * Считывает табулированную функцию из символьного потока с использованием рефлексии.
+     * Формат: количество точек, затем для каждой точки: x y (значения разделены пробелами).
+     *
+     * @param clazz класс табулированной функции
+     * @param in входной символьный поток
+     * @return восстановленная табулированная функция
+     * @throws IOException если возникает ошибка ввода-вывода
+     */
+    public static <T extends TabulatedFunction> TabulatedFunction readTabulatedFunction(
+            Class<T> clazz, Reader in) throws IOException {
+        if (in == null) {
+            throw new IllegalArgumentException("Reader must not be null");
+        }
+
+        StreamTokenizer tokenizer = new StreamTokenizer(in);
+        tokenizer.parseNumbers();
+
+        // Чтение количества точек
+        if (tokenizer.nextToken() != StreamTokenizer.TT_NUMBER) {
+            throw new IOException("Expected number of points");
+        }
+        int pointsCount = (int) tokenizer.nval;
+
+        if (pointsCount < 2) {
+            throw new IOException("Invalid points count: " + pointsCount);
+        }
+
+        FunctionPoint[] points = new FunctionPoint[pointsCount];
+        for (int i = 0; i < pointsCount; i++) {
+            // Чтение x
+            if (tokenizer.nextToken() != StreamTokenizer.TT_NUMBER) {
+                throw new IOException("Expected x coordinate at point " + i);
+            }
+            double x = tokenizer.nval;
+
+            // Чтение y
+            if (tokenizer.nextToken() != StreamTokenizer.TT_NUMBER) {
+                throw new IOException("Expected y coordinate at point " + i);
+            }
+            double y = tokenizer.nval;
+
+            points[i] = new FunctionPoint(x, y);
+        }
+
+        return createTabulatedFunction(clazz, points);
     }
 }
 
